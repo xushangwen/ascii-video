@@ -5,9 +5,10 @@ interface Props {
   recording: boolean
   onStartRecord: () => void
   onStopRecord: () => void
+  onGenerateCard: () => void
 }
 
-export function ExportToolbar({ svgRef, recording, onStartRecord, onStopRecord }: Props) {
+export function ExportToolbar({ svgRef, recording, onStartRecord, onStopRecord, onGenerateCard }: Props) {
   function handleScreenshot() {
     const svgEl = svgRef.current
     if (!svgEl) return
@@ -42,6 +43,14 @@ export function ExportToolbar({ svgRef, recording, onStartRecord, onStopRecord }
 
   return (
     <div className="flex flex-col gap-2 pt-4 border-t border-neutral-800">
+      <button
+        onClick={onGenerateCard}
+        className="w-full py-2 text-[12px] tracking-widest uppercase border border-white text-white
+          hover:bg-white hover:text-black transition-colors flex items-center justify-center gap-2"
+      >
+        <i className="ri-layout-masonry-line text-xs" />
+        Generate Card
+      </button>
       <button
         onClick={handleScreenshot}
         className="w-full py-2 text-[12px] tracking-widest uppercase border border-neutral-700

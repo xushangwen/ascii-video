@@ -8,6 +8,7 @@ import { VideoInput, InputMode } from '@/components/VideoInput'
 import { AsciiSvg } from '@/components/AsciiSvg'
 import { ControlsPanel } from '@/components/ControlsPanel'
 import { ExportToolbar } from '@/components/ExportToolbar'
+import { CardModal } from '@/components/CardModal'
 
 const DEFAULT_PARAMS: AsciiParams = {
   cols: 140,
@@ -30,6 +31,7 @@ export default function Home() {
   const [params, setParams] = useState<AsciiParams>(DEFAULT_PARAMS)
   const [inputMode, setInputMode] = useState<InputMode>('none')
   const [renderActive, setRenderActive] = useState(false)
+  const [showCard, setShowCard] = useState(false)
 
   const webcam = useWebcam()
   const { start: startRecord, stop: stopRecord, recording } = useRecorder(recordCanvasRef)
@@ -59,18 +61,11 @@ export default function Home() {
     }
   }, [webcam])
 
-  function handleFileLoaded() {
-    setRenderActive(true)
-  }
-
-  function updateParams(patch: Partial<AsciiParams>) {
-    setParams(prev => ({ ...prev, ...patch }))
-  }
+  function handleFileLoaded() { setRenderActive(true) }
+  function updateParams(patch: Partial<AsciiParams>) { setParams(prev => ({ ...prev, ...patch })) }
 
   useEffect(() => {
-    if (inputMode === 'webcam' && webcam.active) {
-      setRenderActive(true)
-    }
+    if (inputMode === 'webcam' && webcam.active) setRenderActive(true)
   }, [inputMode, webcam.active])
 
   return (
@@ -99,6 +94,7 @@ export default function Home() {
             recording={recording}
             onStartRecord={startRecord}
             onStopRecord={stopRecord}
+            onGenerateCard={() => setShowCard(true)}
           />
         </aside>
 
@@ -106,24 +102,27 @@ export default function Home() {
           {!renderActive && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
               <div className="font-mono text-[9px] text-neutral-800 leading-relaxed text-center select-none">
-                {[' .:-=+*#%@ .:-=+*#%@','@#%*+=-:.  @#%*+=-:.'].map((r, i) => <div key={i}>{r}</div>)}
+                {[' .:-=+*#%@ .:-=+*#%@', '@#%*+=-:.  @#%*+=-:.'].map((r, i) => <div key={i}>{r}</div>)}
               </div>
               <p className="text-[10px] tracking-widest text-neutral-700 uppercase mt-4">
                 Select Webcam or Upload to begin
               </p>
             </div>
           )}
-          <AsciiSvg
-            ref={svgRef}
-            bgColor={params.bgColor}
-            containerRef={previewContainerRef}
-          />
+          <AsciiSvg ref={svgRef} bgColor={params.bgColor} containerRef={previewContainerRef} />
         </main>
       </div>
 
       <video ref={videoRef} className="hidden" playsInline muted />
-      {/* 隐藏 canvas 供录制用 */}
       <canvas ref={recordCanvasRef} className="hidden" />
+
+      {showCard && (
+        <CardModal
+          svgRef={svgRef}
+          params={params}
+          onClose={() => setShowCard(false)}
+        />
+      )}
     </div>
   )
 }
