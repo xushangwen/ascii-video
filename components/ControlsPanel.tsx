@@ -183,17 +183,21 @@ export function ControlsPanel({ params, onChange }: Props) {
 
       <div className="border-t border-neutral-800 mb-4" />
 
-      {/* 颜色模式 */}
+      {/* 颜色模式 — Segmented Control，grid 三等分避免溢出 */}
       <SectionLabel>Color Mode</SectionLabel>
-      <div className="flex gap-1 mb-4 p-px">
-        {(['bw', 'color', 'single'] as ColorMode[]).map(mode => (
-          <ChipBtn
+      <div className="grid grid-cols-3 mb-4">
+        {(['bw', 'color', 'single'] as ColorMode[]).map((mode, i) => (
+          <button
             key={mode}
-            selected={params.colorMode === mode}
             onClick={() => onChange({ colorMode: mode })}
+            className={`relative py-1.5 text-[11px] uppercase text-center border transition-all
+              ${i > 0 ? '-ml-px' : ''}
+              ${params.colorMode === mode
+                ? 'bg-white text-black border-white z-10'
+                : 'border-neutral-700 text-neutral-500 hover:text-neutral-200 hover:border-neutral-400 hover:z-10'}`}
           >
             {mode === 'bw' ? 'B&W' : mode === 'color' ? 'Color' : 'Custom'}
-          </ChipBtn>
+          </button>
         ))}
       </div>
 
