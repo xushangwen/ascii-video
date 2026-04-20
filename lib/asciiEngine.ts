@@ -22,11 +22,20 @@ export interface AsciiCell {
 }
 
 export const CHARSETS: Record<string, string> = {
+  // ── 基础 ──────────────────────────────────────────────
   minimal:  ' .:-=',
   standard: ' .:-=+*#%@',
+  // Paul Bourke 经典 70 字符渐变（业界标准，最丰富细节）
+  classic:  " .'`^\",:;!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$",
   dense:    " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$",
+  // ── 数字 / 符号 ───────────────────────────────────────
+  binary:   ' 01',
+  digits:   ' 1234567890',
+  // ── Unicode ──────────────────────────────────────────
   blocks:   ' ░▒▓█',
   braille:  ' ⠁⠃⠇⡇⣇⣧⣷⣿',
+  geo:      ' ·∘○◎●',
+  lines:    ' ╌─═╪█',
 }
 
 // ITU-R BT.709 亮度公式
