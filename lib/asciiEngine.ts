@@ -88,6 +88,7 @@ export function processFrame(imageData: ImageData, params: AsciiParams): AsciiCe
   const charLen = charset.length
   const cells: AsciiCell[] = []
   const [sr, sg, sb] = hexToRgb(params.fgColor)
+  const [br, bg, bb] = hexToRgb(params.bgColor)
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
@@ -107,9 +108,14 @@ export function processFrame(imageData: ImageData, params: AsciiParams): AsciiCe
         const v = Math.round(l)
         cells.push({ char, r: v, g: v, b: v })
       } else if (params.colorMode === 'single') {
-        // 用亮度值调制前景色，保留明暗层次感
-        const factor = l / 255
-        cells.push({ char, r: Math.round(sr * factor), g: Math.round(sg * factor), b: Math.round(sb * factor) })
+        // 在 bgColor 和 fgColor 之间线性插值：暗区融入背景，亮区显示前景色
+        const t = l / 255
+        cells.push({
+          char,
+          r: Math.round(br + (sr - br) * t),
+          g: Math.round(bg + (sg - bg) * t),
+          b: Math.round(bb + (sb - bb) * t),
+        })
       } else {
         cells.push({ char, r, g, b })
       }
