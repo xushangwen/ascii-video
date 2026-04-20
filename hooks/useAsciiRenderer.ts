@@ -10,16 +10,24 @@ function paintCellsToCanvas(
   CHAR_W: number,
   CHAR_H: number,
   FONT_SIZE: number,
-  bgColor: string
+  bgColor: string,
+  dpr = 1
 ) {
-  const targetW = Math.round(cols * CHAR_W)
-  const targetH = Math.round(rows * CHAR_H)
-  // 仅在尺寸变化时重置，避免每帧触发 GPU texture 重分配
-  if (canvas.width !== targetW) canvas.width = targetW
-  if (canvas.height !== targetH) canvas.height = targetH
+  const logicalW = Math.round(cols * CHAR_W)
+  const logicalH = Math.round(rows * CHAR_H)
+  const physW = Math.round(logicalW * dpr)
+  const physH = Math.round(logicalH * dpr)
+  // 仅在物理尺寸变化时重置，避免每帧触发 GPU texture 重分配
+  if (canvas.width !== physW) canvas.width = physW
+  if (canvas.height !== physH) canvas.height = physH
+  // CSS 尺寸固定为逻辑像素，防止 retina 拉伸模糊
+  canvas.style.width = `${logicalW}px`
+  canvas.style.height = `${logicalH}px`
   const ctx = canvas.getContext('2d')!
+  // setTransform 每帧重置并应用 dpr scale，避免 ctx.scale() 累乘
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   ctx.fillStyle = bgColor
-  ctx.fillRect(0, 0, targetW, targetH)
+  ctx.fillRect(0, 0, logicalW, logicalH)
   ctx.font = `${FONT_SIZE}px "JetBrains Mono", monospace`
   ctx.textBaseline = 'top'
   for (let i = 0; i < cells.length; i++) {
@@ -122,8 +130,9 @@ export function useAsciiRenderer(
     sCtx.drawImage(drawable, 0, 0, cols, rows)
     const cells = processFrame(sCtx.getImageData(0, 0, cols, rows), p)
 
-    // --- 主预览 Canvas（每帧直接绘制，无 DOM 开销）---
-    paintCellsToCanvas(canvasEl, cells, cols, rows, CHAR_W, CHAR_H, FONT_SIZE, p.bgColor)
+    // --- 主预览 Canvas（DPR 渲染，Retina 清晰）---
+    const dpr = window.devicePixelRatio || 1
+    paintCellsToCanvas(canvasEl, cells, cols, rows, CHAR_W, CHAR_H, FONT_SIZE, p.bgColor, dpr)
 
     // --- 卡片 SVG（只在 CardModal 打开时才更新）---
     if (cardSvgRef?.current) {
@@ -136,9 +145,9 @@ export function useAsciiRenderer(
       cardEl.innerHTML = buildSvgBody(cells, cols, rows, CHAR_W, CHAR_H, p.bgColor)
     }
 
-    // --- 录制 Canvas（仅录制时更新）---
+    // --- 录制 Canvas（dpr=1，只关心视频内容像素）---
     if (recordingRef.current && recordCanvasRef.current) {
-      paintCellsToCanvas(recordCanvasRef.current, cells, cols, rows, CHAR_W, CHAR_H, FONT_SIZE, p.bgColor)
+      paintCellsToCanvas(recordCanvasRef.current, cells, cols, rows, CHAR_W, CHAR_H, FONT_SIZE, p.bgColor, 1)
     }
 
     rafRef.current = requestAnimationFrame(renderFrame)
