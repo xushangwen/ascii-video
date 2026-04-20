@@ -5,7 +5,7 @@ import { useWebcam } from '@/hooks/useWebcam'
 import { useRecorder } from '@/hooks/useRecorder'
 import { useAsciiRenderer } from '@/hooks/useAsciiRenderer'
 import { VideoInput, VideoInputHandle, InputMode } from '@/components/VideoInput'
-import { AsciiSvg } from '@/components/AsciiSvg'
+import { AsciiCanvas } from '@/components/AsciiSvg'
 import { ControlsPanel } from '@/components/ControlsPanel'
 import { ExportToolbar } from '@/components/ExportToolbar'
 import { CardModal } from '@/components/CardModal'
@@ -26,7 +26,7 @@ const DEFAULT_PARAMS: AsciiParams = {
 export default function Home() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
-  const svgRef = useRef<SVGSVGElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const cardSvgRef = useRef<SVGSVGElement>(null)
   const recordCanvasRef = useRef<HTMLCanvasElement>(null)
   const previewContainerRef = useRef<HTMLDivElement>(null)
@@ -45,7 +45,7 @@ export default function Home() {
   const { start: startRecord, stop: stopRecord, recording } = useRecorder(recordCanvasRef)
 
   useAsciiRenderer(
-    videoRef, svgRef, recordCanvasRef, previewContainerRef,
+    videoRef, canvasRef, recordCanvasRef, previewContainerRef,
     params, renderActive, recording, cardSvgRef, imageRef
   )
 
@@ -142,7 +142,7 @@ export default function Home() {
             <ControlsPanel params={params} onChange={updateParams} />
           </div>
           <ExportToolbar
-            svgRef={svgRef}
+            canvasRef={canvasRef}
             recording={recording}
             onStartRecord={startRecord}
             onStopRecord={stopRecord}
@@ -209,7 +209,7 @@ export default function Home() {
               </div>
             </div>
           )}
-          <AsciiSvg ref={svgRef} bgColor={params.bgColor} containerRef={previewContainerRef} />
+          <AsciiCanvas ref={canvasRef} bgColor={params.bgColor} containerRef={previewContainerRef} />
         </main>
       </div>
 

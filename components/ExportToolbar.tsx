@@ -1,46 +1,27 @@
 'use client'
 
 interface Props {
-  svgRef: React.RefObject<SVGSVGElement | null>
+  canvasRef: React.RefObject<HTMLCanvasElement | null>
   recording: boolean
   onStartRecord: () => void
   onStopRecord: () => void
   onGenerateCard: () => void
 }
 
-export function ExportToolbar({ svgRef, recording, onStartRecord, onStopRecord, onGenerateCard }: Props) {
+export function ExportToolbar({ canvasRef, recording, onStartRecord, onStopRecord, onGenerateCard }: Props) {
   function handleScreenshot() {
-    const svgEl = svgRef.current
-    if (!svgEl) return
-
-    const w = svgEl.width.baseVal.value
-    const h = svgEl.height.baseVal.value
-    const svgString = new XMLSerializer().serializeToString(svgEl)
-    const blob = new Blob([svgString], { type: 'image/svg+xml' })
-    const url = URL.createObjectURL(blob)
-
-    // SVG → Canvas → JPEG（macOS QuickLook 兼容）
-    const img = new Image()
-    img.onload = () => {
-      const canvas = document.createElement('canvas')
-      const dpr = window.devicePixelRatio || 1
-      canvas.width = w * dpr
-      canvas.height = h * dpr
-      const ctx = canvas.getContext('2d')!
-      ctx.scale(dpr, dpr)
-      ctx.drawImage(img, 0, 0, w, h)
-      URL.revokeObjectURL(url)
-      canvas.toBlob(jpegBlob => {
-        if (!jpegBlob) return
-        const objectUrl = URL.createObjectURL(jpegBlob)
-        const a = document.createElement('a')
-        a.href = objectUrl
-        a.download = `ascii-${Date.now()}.jpg`
-        a.click()
-        URL.revokeObjectURL(objectUrl)
-      }, 'image/jpeg', 0.95)
-    }
-    img.src = url
+    const canvas = canvasRef.current
+    if (!canvas) return
+    // Canvas 直接 toBlob，无需 SVG 序列化和 Image 中转
+    canvas.toBlob(blob => {
+      if (!blob) return
+      const objectUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = objectUrl
+      a.download = `ascii-${Date.now()}.jpg`
+      a.click()
+      URL.revokeObjectURL(objectUrl)
+    }, 'image/jpeg', 0.95)
   }
 
   return (
