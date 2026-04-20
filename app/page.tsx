@@ -42,7 +42,7 @@ export default function Home() {
   const dropUrlRef = useRef('')
 
   const webcam = useWebcam()
-  const { start: startRecord, stop: stopRecord, recording } = useRecorder(recordCanvasRef)
+  const { start: startRecord, stop: stopRecord, recording, elapsed } = useRecorder(recordCanvasRef)
 
   useAsciiRenderer(
     videoRef, canvasRef, recordCanvasRef, previewContainerRef,
@@ -144,6 +144,7 @@ export default function Home() {
           <ExportToolbar
             canvasRef={canvasRef}
             recording={recording}
+            elapsed={elapsed}
             onStartRecord={() => startRecord(params.fps)}
             onStopRecord={stopRecord}
             onGenerateCard={() => setShowCard(true)}

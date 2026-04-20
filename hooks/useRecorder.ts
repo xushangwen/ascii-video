@@ -4,16 +4,15 @@ import { useRef, useState, useCallback } from 'react'
 export function useRecorder(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [recording, setRecording] = useState(false)
+  const [elapsed, setElapsed] = useState(0)
 
   const start = useCallback((fps = 30) => {
     const canvas = canvasRef.current
     if (!canvas) return
 
-    // captureStream 帧率与 params.fps 同步
     const stream = canvas.captureStream(fps)
-
-    // VP9 优先；8Mbps 码率保证 ASCII 高对比度文字不糊
     const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
       ? 'video/webm;codecs=vp9'
       : 'video/webm'
@@ -33,16 +32,21 @@ export function useRecorder(canvasRef: React.RefObject<HTMLCanvasElement | null>
       a.click()
       URL.revokeObjectURL(url)
     }
+
     recorder.start()
     recorderRef.current = recorder
     setRecording(true)
+    setElapsed(0)
+    timerRef.current = setInterval(() => setElapsed(s => s + 1), 1000)
   }, [canvasRef])
 
   const stop = useCallback(() => {
     recorderRef.current?.stop()
     recorderRef.current = null
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
     setRecording(false)
+    setElapsed(0)
   }, [])
 
-  return { start, stop, recording }
+  return { start, stop, recording, elapsed }
 }
