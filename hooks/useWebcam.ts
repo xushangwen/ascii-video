@@ -3,6 +3,7 @@ import { useRef, useCallback, useState } from 'react'
 
 export function useWebcam() {
   const streamRef = useRef<MediaStream | null>(null)
+  const videoElRef = useRef<HTMLVideoElement | null>(null)
   const [active, setActive] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -13,6 +14,7 @@ export function useWebcam() {
         audio: false,
       })
       streamRef.current = stream
+      videoElRef.current = videoEl
       videoEl.srcObject = stream
       await videoEl.play()
       setActive(true)
@@ -26,6 +28,10 @@ export function useWebcam() {
   const stop = useCallback(() => {
     streamRef.current?.getTracks().forEach(t => t.stop())
     streamRef.current = null
+    if (videoElRef.current) {
+      videoElRef.current.srcObject = null
+      videoElRef.current = null
+    }
     setActive(false)
   }, [])
 

@@ -32,29 +32,31 @@ export function ExportToolbar({ svgRef, recording, onStartRecord, onStopRecord, 
       URL.revokeObjectURL(url)
       canvas.toBlob(jpegBlob => {
         if (!jpegBlob) return
+        const objectUrl = URL.createObjectURL(jpegBlob)
         const a = document.createElement('a')
-        a.href = URL.createObjectURL(jpegBlob)
+        a.href = objectUrl
         a.download = `ascii-${Date.now()}.jpg`
         a.click()
+        URL.revokeObjectURL(objectUrl)
       }, 'image/jpeg', 0.95)
     }
     img.src = url
   }
 
   return (
-    <div className="flex flex-col gap-2 pt-4 border-t border-neutral-800">
+    <div className="flex flex-col gap-2 pt-4 border-t border-neutral-200">
       <button
         onClick={onGenerateCard}
-        className="w-full py-2 text-[12px] tracking-widest uppercase border border-white text-white
-          hover:bg-white hover:text-black transition-colors flex items-center justify-center gap-2"
+        className="w-full py-2 text-[12px] tracking-widest uppercase border border-neutral-900 text-neutral-900
+          hover:bg-neutral-900 hover:text-white transition-colors flex items-center justify-center gap-2"
       >
         <i className="ri-layout-masonry-line text-xs" />
         Generate Card
       </button>
       <button
         onClick={handleScreenshot}
-        className="w-full py-2 text-[12px] tracking-widest uppercase border border-neutral-700
-          text-neutral-400 hover:border-white hover:text-white transition-colors flex items-center justify-center gap-2"
+        className="w-full py-2 text-[12px] tracking-widest uppercase border border-neutral-300
+          text-neutral-500 hover:border-neutral-900 hover:text-neutral-900 transition-colors flex items-center justify-center gap-2"
       >
         <i className="ri-camera-line text-xs" />
         Screenshot
@@ -63,8 +65,8 @@ export function ExportToolbar({ svgRef, recording, onStartRecord, onStopRecord, 
         onClick={recording ? onStopRecord : onStartRecord}
         className={`w-full py-2 text-[12px] tracking-widest uppercase border transition-colors flex items-center justify-center gap-2
           ${recording
-            ? 'border-red-500 text-red-400 animate-pulse hover:border-red-300'
-            : 'border-neutral-700 text-neutral-400 hover:border-white hover:text-white'}`}
+            ? 'border-red-500 text-red-500 animate-pulse hover:border-red-400'
+            : 'border-neutral-300 text-neutral-500 hover:border-neutral-900 hover:text-neutral-900'}`}
       >
         <i className={`text-xs ${recording ? 'ri-stop-circle-line' : 'ri-record-circle-line'}`} />
         {recording ? 'Stop Rec' : 'Record'}

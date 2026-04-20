@@ -1,3 +1,5 @@
+export const CHAR_ASPECT = 0.6 // JetBrains Mono 字符宽高比
+
 export type ColorMode = 'bw' | 'color' | 'single'
 
 export interface AsciiParams {
@@ -46,6 +48,37 @@ function hexToRgb(hex: string): [number, number, number] {
     parseInt(h.slice(2, 4), 16),
     parseInt(h.slice(4, 6), 16),
   ]
+}
+
+export function escSvgChar(char: string): string {
+  if (char === '&') return '&amp;'
+  if (char === '<') return '&lt;'
+  if (char === '>') return '&gt;'
+  if (char === '"') return '&quot;'
+  if (char === ' ') return '&#160;'
+  return char
+}
+
+export function buildSvgBody(
+  cells: AsciiCell[],
+  cols: number,
+  rows: number,
+  charW: number,
+  charH: number,
+  bgColor: string
+): string {
+  let s = `<rect width="100%" height="100%" fill="${bgColor}"/>`
+  for (let row = 0; row < rows; row++) {
+    const y = (row * charH).toFixed(2)
+    s += `<text y="${y}" dominant-baseline="hanging" xml:space="preserve">`
+    for (let col = 0; col < cols; col++) {
+      const cell = cells[row * cols + col]
+      if (!cell) continue
+      s += `<tspan x="${(col * charW).toFixed(2)}" fill="rgb(${cell.r},${cell.g},${cell.b})">${escSvgChar(cell.char)}</tspan>`
+    }
+    s += '</text>'
+  }
+  return s
 }
 
 // imageData 已经是按 cols×rows 采样好的，直接遍历即可

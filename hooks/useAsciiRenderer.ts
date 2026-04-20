@@ -1,41 +1,6 @@
 'use client'
 import { useEffect, useRef, useCallback } from 'react'
-import { processFrame, AsciiParams, AsciiCell } from '@/lib/asciiEngine'
-
-const CHAR_ASPECT = 0.6 // JetBrains Mono 字符宽高比
-
-// XML 特殊字符转义（SVG 文本节点需要）
-function esc(char: string): string {
-  if (char === '&') return '&amp;'
-  if (char === '<') return '&lt;'
-  if (char === '>') return '&gt;'
-  if (char === '"') return '&quot;'
-  if (char === ' ') return '&#160;' // 非断行空格，防止 SVG 折叠空格
-  return char
-}
-
-function buildSvgBody(
-  cells: AsciiCell[],
-  cols: number,
-  rows: number,
-  CHAR_W: number,
-  CHAR_H: number,
-  bgColor: string
-): string {
-  let s = `<rect width="100%" height="100%" fill="${bgColor}"/>`
-  for (let row = 0; row < rows; row++) {
-    const y = (row * CHAR_H).toFixed(2)
-    s += `<text y="${y}" dominant-baseline="hanging" xml:space="preserve">`
-    for (let col = 0; col < cols; col++) {
-      const cell = cells[row * cols + col]
-      if (!cell) continue
-      const x = (col * CHAR_W).toFixed(2)
-      s += `<tspan x="${x}" fill="rgb(${cell.r},${cell.g},${cell.b})">${esc(cell.char)}</tspan>`
-    }
-    s += '</text>'
-  }
-  return s
-}
+import { processFrame, AsciiParams, AsciiCell, CHAR_ASPECT, buildSvgBody } from '@/lib/asciiEngine'
 
 // 将相同 cell 数据渲染到 canvas（用于录制）
 function paintCellsToCanvas(
@@ -69,7 +34,9 @@ export function useAsciiRenderer(
   containerRef: React.RefObject<HTMLElement | null>,
   params: AsciiParams,
   active: boolean,
-  recording: boolean
+  recording: boolean,
+  cardSvgRef?: React.RefObject<SVGSVGElement | null>,
+  imageRef?: React.RefObject<HTMLImageElement | null>
 ) {
   const samplerCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const rafRef = useRef<number>(0)
@@ -94,9 +61,20 @@ export function useAsciiRenderer(
   }, [containerRef])
 
   const renderFrame = useCallback(() => {
-    const video = sourceRef.current
     const svgEl = svgRef.current
-    if (!video || !svgEl || video.readyState < 2) {
+    if (!svgEl) { rafRef.current = requestAnimationFrame(renderFrame); return }
+
+    // 确定有效媒体源（image 优先）
+    const img = imageRef?.current
+    const video = sourceRef.current
+    let drawable: CanvasImageSource | null = null
+    let sourceW = 0, sourceH = 0
+    if (img && img.complete && img.naturalWidth > 0) {
+      drawable = img; sourceW = img.naturalWidth; sourceH = img.naturalHeight
+    } else if (video && video.readyState >= 2) {
+      drawable = video; sourceW = video.videoWidth; sourceH = video.videoHeight
+    }
+    if (!drawable || !sourceW || !sourceH) {
       rafRef.current = requestAnimationFrame(renderFrame)
       return
     }
@@ -118,22 +96,20 @@ export function useAsciiRenderer(
     }
 
     const cols = p.cols
-    const videoAR = video.videoWidth / video.videoHeight
+    const sourceAR = sourceW / sourceH
 
-    // 在容器内保持视频比例
+    // 在容器内保持源比例
     let canvasW: number, canvasH: number
-    if (cW / cH > videoAR) {
-      canvasH = cH
-      canvasW = cH * videoAR
+    if (cW / cH > sourceAR) {
+      canvasH = cH; canvasW = cH * sourceAR
     } else {
-      canvasW = cW
-      canvasH = cW / videoAR
+      canvasW = cW; canvasH = cW / sourceAR
     }
 
     const CHAR_W = canvasW / cols
     const CHAR_H = CHAR_W / CHAR_ASPECT
     const FONT_SIZE = Math.round(CHAR_H)
-    const rows = Math.max(1, Math.round(cols * CHAR_ASPECT / videoAR))
+    const rows = Math.max(1, Math.round(cols * CHAR_ASPECT / sourceAR))
 
     // 采样到低分辨率 canvas
     if (!samplerCanvasRef.current) {
@@ -143,7 +119,7 @@ export function useAsciiRenderer(
     sampler.width = cols
     sampler.height = rows
     const sCtx = sampler.getContext('2d', { willReadFrequently: true })!
-    sCtx.drawImage(video, 0, 0, cols, rows)
+    sCtx.drawImage(drawable, 0, 0, cols, rows)
     const imageData = sCtx.getImageData(0, 0, cols, rows)
     const cells = processFrame(imageData, p)
 
@@ -154,13 +130,24 @@ export function useAsciiRenderer(
     svgEl.setAttribute('font-size', FONT_SIZE.toFixed(1))
     svgEl.innerHTML = buildSvgBody(cells, cols, rows, CHAR_W, CHAR_H, p.bgColor)
 
+    // --- 卡片 SVG（与主 SVG 同步，用 viewBox 让 CSS 自由缩放）---
+    if (cardSvgRef?.current) {
+      const cardEl = cardSvgRef.current
+      const svgW = Math.round(cols * CHAR_W)
+      const svgH = Math.round(rows * CHAR_H)
+      cardEl.setAttribute('viewBox', `0 0 ${svgW} ${svgH}`)
+      cardEl.setAttribute('font-family', '"JetBrains Mono",monospace')
+      cardEl.setAttribute('font-size', FONT_SIZE.toFixed(1))
+      cardEl.innerHTML = buildSvgBody(cells, cols, rows, CHAR_W, CHAR_H, p.bgColor)
+    }
+
     // --- 隐藏 Canvas（仅录制时更新）---
     if (recordingRef.current && recordCanvasRef.current) {
       paintCellsToCanvas(recordCanvasRef.current, cells, cols, rows, CHAR_W, CHAR_H, FONT_SIZE, p.bgColor)
     }
 
     rafRef.current = requestAnimationFrame(renderFrame)
-  }, [sourceRef, svgRef, recordCanvasRef])
+  }, [sourceRef, svgRef, recordCanvasRef, cardSvgRef, imageRef])
 
   useEffect(() => {
     if (active) {

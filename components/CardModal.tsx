@@ -1,10 +1,14 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { AsciiParams, CHARSETS } from '@/lib/asciiEngine'
+import { setCardData } from '@/lib/cardStore'
 
 interface Props {
-  svgRef: React.RefObject<SVGSVGElement | null>
+  cardSvgRef: React.RefObject<SVGSVGElement | null>
   params: AsciiParams
+  mediaSrc: string
+  mediaType: 'video' | 'image'
   onClose: () => void
 }
 
@@ -45,25 +49,24 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: num
   if (line) ctx.fillText(line, x, y)
 }
 
-export function CardModal({ svgRef, params, onClose }: Props) {
-  const [title, setTitle] = useState(TITLE_PRESETS[Math.floor(Math.random() * TITLE_PRESETS.length)])
+export function CardModal({ cardSvgRef, params, mediaSrc, mediaType, onClose }: Props) {
+  const router = useRouter()
+  const [presetIdx, setPresetIdx] = useState(() => Math.floor(Math.random() * TITLE_PRESETS.length))
+  const [title, setTitle] = useState(() => TITLE_PRESETS[Math.floor(Math.random() * TITLE_PRESETS.length)])
   const [desc, setDesc] = useState(() => generateDesc(params))
-  const [svgDataUrl, setSvgDataUrl] = useState('')
-  const [presetIdx, setPresetIdx] = useState(0)
   const [downloading, setDownloading] = useState(false)
 
-  useEffect(() => {
-    const svgEl = svgRef.current
-    if (!svgEl) return
-    const str = new XMLSerializer().serializeToString(svgEl)
-    setSvgDataUrl(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(str)}`)
-  }, [svgRef])
+  function handleOpenPreview() {
+    setCardData({ mediaSrc, mediaType, params, title, desc })
+    router.push('/card')
+  }
 
   function cycleTitle() {
     const next = (presetIdx + 1) % TITLE_PRESETS.length
     setPresetIdx(next)
     setTitle(TITLE_PRESETS[next])
   }
+
 
   async function handleDownload() {
     setDownloading(true)
@@ -82,9 +85,12 @@ export function CardModal({ svgRef, params, onClose }: Props) {
     ctx.fillStyle = '#f5f5f3'
     ctx.fillRect(0, 0, CARD_W, CARD_H)
 
-    // ASCII 图像区（上方 58%）
+    // 从 live SVG 序列化当前帧
     const artH = CARD_H * 0.58
-    if (svgDataUrl) {
+    const svgEl = cardSvgRef.current
+    if (svgEl) {
+      const str = new XMLSerializer().serializeToString(svgEl)
+      const svgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(str)}`
       await new Promise<void>(resolve => {
         const img = new Image()
         img.onload = () => {
@@ -112,7 +118,7 @@ export function CardModal({ svgRef, params, onClose }: Props) {
     // 标题
     ctx.fillStyle = '#111'
     ctx.font = `700 38px "Space Grotesk", sans-serif`
-    ctx.fillText(title, PAD, divY + 60)
+    ctx.fillText(title, PAD, divY + 60, CARD_W - PAD * 2)
 
     // 描述（自动换行）
     ctx.fillStyle = '#888'
@@ -144,10 +150,12 @@ export function CardModal({ svgRef, params, onClose }: Props) {
 
     canvas.toBlob(blob => {
       if (!blob) return
+      const objectUrl = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = URL.createObjectURL(blob)
+      a.href = objectUrl
       a.download = `ascii-card-${Date.now()}.jpg`
       a.click()
+      URL.revokeObjectURL(objectUrl)
       setDownloading(false)
     }, 'image/jpeg', 0.95)
   }
@@ -165,12 +173,12 @@ export function CardModal({ svgRef, params, onClose }: Props) {
           <div className="flex items-center gap-3">
             <button
               onClick={cycleTitle}
-              className="text-[11px] tracking-widest text-neutral-500 hover:text-white uppercase transition-colors flex items-center gap-1"
+              className="text-[11px] tracking-widest text-neutral-400 hover:text-neutral-100 uppercase transition-colors flex items-center gap-1"
               title="换个标题"
             >
               <i className="ri-refresh-line text-xs" /> Reshuffle
             </button>
-            <button onClick={onClose} className="text-neutral-500 hover:text-white transition-colors">
+            <button onClick={onClose} className="text-neutral-400 hover:text-neutral-100 transition-colors">
               <i className="ri-close-line text-base" />
             </button>
           </div>
@@ -186,12 +194,13 @@ export function CardModal({ svgRef, params, onClose }: Props) {
             <div key={p} style={cornerStyle(p)} />
           ))}
 
-          {/* ASCII 快照 */}
+          {/* ASCII 动态预览 */}
           <div style={{ height: '56%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-            {svgDataUrl
-              ? <img src={svgDataUrl} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="" />
-              : <div style={{ color: '#ccc', fontSize: 12 }}>No frame captured</div>
-            }
+            <svg
+              ref={cardSvgRef}
+              preserveAspectRatio="xMidYMid meet"
+              style={{ width: '100%', height: '100%', display: 'block' }}
+            />
           </div>
 
           {/* 分隔线 */}
@@ -231,17 +240,30 @@ export function CardModal({ svgRef, params, onClose }: Props) {
           </div>
         </div>
 
-        {/* 下载按钮 */}
-        <button
-          onClick={handleDownload}
-          disabled={downloading || !svgDataUrl}
-          className="w-full py-2.5 text-[12px] tracking-widest uppercase border border-white text-white
-            hover:bg-white hover:text-black transition-colors flex items-center justify-center gap-2
-            disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <i className={`text-xs ${downloading ? 'ri-loader-4-line animate-spin' : 'ri-download-2-line'}`} />
-          {downloading ? 'Rendering...' : 'Download Card'}
-        </button>
+        {/* 按钮组 */}
+        <div className="flex gap-2">
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="flex-1 py-2.5 text-[12px] tracking-widest uppercase border border-neutral-200 text-white
+              hover:bg-white hover:text-neutral-900 transition-colors flex items-center justify-center gap-2
+              disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <i className={`text-xs ${downloading ? 'ri-loader-4-line animate-spin' : 'ri-image-2-line'}`} />
+            {downloading ? 'Rendering...' : 'Save JPG'}
+          </button>
+          <button
+            onClick={handleOpenPreview}
+            disabled={!mediaSrc}
+            title={!mediaSrc ? 'Not available in webcam mode' : ''}
+            className="flex-1 py-2.5 text-[12px] tracking-widest uppercase border border-neutral-500 text-neutral-400
+              hover:border-white hover:text-white transition-colors flex items-center justify-center gap-2
+              disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <i className="ri-video-download-line text-xs" />
+            Preview &amp; Video
+          </button>
+        </div>
       </div>
     </div>
   )
