@@ -144,7 +144,7 @@ export default function Home() {
           <ExportToolbar
             canvasRef={canvasRef}
             recording={recording}
-            onStartRecord={startRecord}
+            onStartRecord={() => startRecord(params.fps)}
             onStopRecord={stopRecord}
             onGenerateCard={() => setShowCard(true)}
           />

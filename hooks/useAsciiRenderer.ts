@@ -145,9 +145,9 @@ export function useAsciiRenderer(
       cardEl.innerHTML = buildSvgBody(cells, cols, rows, CHAR_W, CHAR_H, p.bgColor)
     }
 
-    // --- 录制 Canvas（dpr=1，只关心视频内容像素）---
+    // --- 录制 Canvas（dpr=2 固定高分辨率，视频输出 2x 清晰）---
     if (recordingRef.current && recordCanvasRef.current) {
-      paintCellsToCanvas(recordCanvasRef.current, cells, cols, rows, CHAR_W, CHAR_H, FONT_SIZE, p.bgColor, 1)
+      paintCellsToCanvas(recordCanvasRef.current, cells, cols, rows, CHAR_W, CHAR_H, FONT_SIZE, p.bgColor, 2)
     }
 
     rafRef.current = requestAnimationFrame(renderFrame)

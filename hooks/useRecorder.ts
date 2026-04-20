@@ -6,14 +6,22 @@ export function useRecorder(canvasRef: React.RefObject<HTMLCanvasElement | null>
   const chunksRef = useRef<Blob[]>([])
   const [recording, setRecording] = useState(false)
 
-  const start = useCallback(() => {
+  const start = useCallback((fps = 30) => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const stream = canvas.captureStream(30)
+
+    // captureStream 帧率与 params.fps 同步
+    const stream = canvas.captureStream(fps)
+
+    // VP9 优先；8Mbps 码率保证 ASCII 高对比度文字不糊
     const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
       ? 'video/webm;codecs=vp9'
       : 'video/webm'
-    const recorder = new MediaRecorder(stream, { mimeType })
+    const recorder = new MediaRecorder(stream, {
+      mimeType,
+      videoBitsPerSecond: 8_000_000,
+    })
+
     chunksRef.current = []
     recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
     recorder.onstop = () => {
