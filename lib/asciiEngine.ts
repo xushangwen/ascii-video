@@ -107,7 +107,9 @@ export function processFrame(imageData: ImageData, params: AsciiParams): AsciiCe
         const v = Math.round(l)
         cells.push({ char, r: v, g: v, b: v })
       } else if (params.colorMode === 'single') {
-        cells.push({ char, r: sr, g: sg, b: sb })
+        // 用亮度值调制前景色，保留明暗层次感
+        const factor = l / 255
+        cells.push({ char, r: Math.round(sr * factor), g: Math.round(sg * factor), b: Math.round(sb * factor) })
       } else {
         cells.push({ char, r, g, b })
       }
